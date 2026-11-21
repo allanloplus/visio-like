@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>流程圖繪製工具</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<header id="toolbar">
+  <strong class="brand">流程圖工具</strong>
+  <span class="grp">
+    <button data-act="new" title="清空畫布，開始新圖">新增</button>
+    <button data-act="open" title="開啟本工具儲存的 SVG，或含有本工具圖片的 Word / PowerPoint 檔">開啟…</button>
+    <button data-act="save" title="儲存為可再編輯的 SVG (Ctrl+S)">儲存</button>
+  </span>
+  <span class="grp">
+    <button data-act="undo" title="復原 (Ctrl+Z)">↶ 復原</button>
+    <button data-act="redo" title="重做 (Ctrl+Y)">↷ 重做</button>
+  </span>
+  <span class="grp">
+    <span class="lbl">匯出</span>
+    <button data-act="pptx" title="匯出為 PowerPoint 原生圖案，可直接在 PowerPoint 內修改">PowerPoint</button>
+    <button data-act="docx" title="匯出為內含向量圖的 Word 檔，可複製到其他文件，日後再用本工具開啟修改">Word</button>
+    <button data-act="png" title="下載 PNG 圖片">PNG</button>
+    <button data-act="copy" title="複製為圖片，可直接貼到 Word / PowerPoint / Email">複製圖片</button>
+  </span>
+  <span class="grp" id="office-grp" hidden>
+    <button data-act="saveback" class="primary" title="把修改後的圖寫回原本的 Office 檔"></button>
+  </span>
+  <span class="grp right">
+    <button data-act="zoomout" title="縮小">－</button>
+    <button data-act="zoom100" id="zoom-label" title="回到 100%">100%</button>
+    <button data-act="zoomin" title="放大">＋</button>
+    <button data-act="fit" title="顯示全部">全覽</button>
+    <button data-act="help">說明</button>
+  </span>
+</header>
+<main>
+  <aside id="palette"></aside>
+  <div id="stage">
+    <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
+      <g id="viewport"><g id="content"></g><g id="overlay"></g></g>
+    </svg>
+    <div id="hint">從左側點選或拖曳圖形到畫布開始繪製</div>
+  </div>
+  <aside id="props"></aside>
+</main>
+<input type="file" id="file-input" accept=".svg,.docx,.pptx" hidden>
+<div id="toast" hidden></div>
+<div id="modal" hidden><div class="box"><div class="body"></div><div class="foot"><button data-close>關閉</button></div></div></div>
+
+<script src="vendor/jszip.min.js"></script>
+<script src="js/core.js"></script>
+<script src="js/shapes.js"></script>
+<script src="js/router.js"></script>
+<script src="js/mindmap.js"></script>
+<script src="js/render.js"></script>
+<script src="js/editor.js"></script>
+<script src="js/pptx.js"></script>
+<script src="js/io.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>
