@@ -2,6 +2,14 @@
 (function () {
   const VL = (window.VL = window.VL || {});
 
+  VL.APP = {
+    name: "Allan's 隨意畫流程圖",
+    author: 'Allan Lo',
+    site: 'https://www.123hi.org',
+    date: '2026/11/21',
+    version: 'Allanlo-20261121-01',
+  };
+
   VL.FONT = "'Microsoft JhengHei','PingFang TC','Noto Sans TC','Segoe UI',Arial,sans-serif";
   VL.GRID = 10;
   VL.HS = 28; // 甬道標題列寬度

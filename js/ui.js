@@ -147,6 +147,12 @@
   <li>工具會請 AI 辨識圖形、文字、連接線與甬道後重繪；完成後左下角會顯示原圖供對照檢查。</li>
   <li>自動轉換需 Claude API 金鑰，且<b>圖檔會傳送到 Anthropic API</b>；也可用手動方式（不需金鑰）。</li></ul>
   <p class="muted">除了「圖檔轉換」的自動模式外，所有資料都只在你的瀏覽器內處理，不會上傳到任何伺服器。</p>`;
+  const A = VL.APP;
+  const ABOUT = `<h2>關於 ${VL.esc(A.name)}</h2>
+  <table class="about"><tr><th>工具名稱</th><td>${VL.esc(A.name)}</td></tr>
+  <tr><th>系統設計</th><td>${VL.esc(A.author)}，<a href="${A.site}" target="_blank" rel="noopener">${A.site}</a></td></tr>
+  <tr><th>開發日期</th><td>${A.date}</td></tr>
+  <tr><th>最新版本</th><td>${A.version}</td></tr></table>`;
   const ACTS = {
     new: () => { if (!E.doc.nodes.length || confirm('確定要清空目前的圖嗎？（可用復原找回）')) { io.office = null; io.name = '流程圖'; E.load(VL.newDoc()); syncOffice(); } },
     open: () => $('#file-input').click(),
@@ -159,9 +165,13 @@
     copy: guard(() => io.copyPng(), '已複製圖片，可直接貼到 Word / PowerPoint'),
     saveback: guard(() => io.saveBackOffice(), '已產生更新後的檔案'),
     zoomin: () => E.zoom(E.view.z * 1.2), zoomout: () => E.zoom(E.view.z / 1.2), zoom100: () => E.zoom(1), fit: () => E.fit(),
-    help: () => ui.modal(HELP),
+    help: () => ui.modal(HELP + ABOUT),
+    about: () => ui.modal(ABOUT),
   };
 
+  document.title = A.name;
+  $('#brand').textContent = A.name;
+  $('#brand').title = `${A.version}｜系統設計：${A.author}`;
   buildPalette();
   bindProps();
   $('#toolbar').addEventListener('click', (e) => { const b = e.target.closest('[data-act]'); if (b) ACTS[b.dataset.act](); });
