@@ -142,10 +142,15 @@
   <li><b>Word</b>：按「Word」匯出一份內含向量圖的 .docx，把圖複製到你的文件；或用「儲存」得到 SVG 後以「插入 → 圖片」放入文件。</li>
   <li><b>日後要修改</b>：直接用「開啟…」選那份 <b>.docx / .pptx</b>，工具會找出裡面的圖讓你修改，改完按「存回」即可，文件其餘內容不變。</li>
   <li>「複製圖片」可快速貼到任何地方（點陣圖，不可再編輯）。</li></ul>
-  <p class="muted">所有資料都只在你的瀏覽器內處理，不會上傳到任何伺服器。</p>`;
+  <h4>把現成的流程圖圖檔變成可編輯</h4>
+  <ul><li>按「圖檔轉換…」選圖檔，或把圖檔拖進畫布，或直接 <kbd>Ctrl</kbd>+<kbd>V</kbd> 貼上截圖。</li>
+  <li>工具會請 AI 辨識圖形、文字、連接線與甬道後重繪；完成後左下角會顯示原圖供對照檢查。</li>
+  <li>自動轉換需 Claude API 金鑰，且<b>圖檔會傳送到 Anthropic API</b>；也可用手動方式（不需金鑰）。</li></ul>
+  <p class="muted">除了「圖檔轉換」的自動模式外，所有資料都只在你的瀏覽器內處理，不會上傳到任何伺服器。</p>`;
   const ACTS = {
     new: () => { if (!E.doc.nodes.length || confirm('確定要清空目前的圖嗎？（可用復原找回）')) { io.office = null; io.name = '流程圖'; E.load(VL.newDoc()); syncOffice(); } },
     open: () => $('#file-input').click(),
+    import: () => $('#image-input').click(),
     save: () => io.saveSvg(),
     undo: () => E.undo(), redo: () => E.redo(),
     pptx: guard(() => io.savePptx(), '已匯出 PowerPoint，可直接在簡報中編輯圖案'),
@@ -164,6 +169,17 @@
     const f = e.target.files[0];
     e.target.value = '';
     if (f) { await guard(() => io.openFile(f))(); syncOffice(); }
+  });
+  $('#image-input').addEventListener('change', async (e) => {
+    const f = e.target.files[0];
+    e.target.value = '';
+    if (f) await guard(() => VL.importer.open(f))();
+  });
+  // 直接貼上截圖（例如從程序書 PDF 擷取的流程圖）
+  window.addEventListener('paste', (e) => {
+    if (/INPUT|TEXTAREA/.test(e.target.tagName)) return;
+    const f = [...(e.clipboardData ? e.clipboardData.files : [])].find((x) => VL.importer.isImage(x));
+    if (f) { e.preventDefault(); guard(() => VL.importer.open(f))(); }
   });
   E.onChange = () => {
     buildProps();

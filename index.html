@@ -12,6 +12,7 @@
   <span class="grp">
     <button data-act="new" title="清空畫布，開始新圖">新增</button>
     <button data-act="open" title="開啟本工具儲存的 SVG，或含有本工具圖片的 Word / PowerPoint 檔">開啟…</button>
+    <button data-act="import" title="把現成的流程圖圖檔（PNG / JPG）拆解並重繪成可編輯的圖；也可直接把圖檔拖進畫布或貼上截圖">🖼 圖檔轉換…</button>
     <button data-act="save" title="儲存為可再編輯的 SVG (Ctrl+S)">儲存</button>
   </span>
   <span class="grp">
@@ -47,6 +48,7 @@
   <aside id="props"></aside>
 </main>
 <input type="file" id="file-input" accept=".svg,.docx,.pptx" hidden>
+<input type="file" id="image-input" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp" hidden>
 <div id="toast" hidden></div>
 <div id="modal" hidden><div class="box"><div class="body"></div><div class="foot"><button data-close>關閉</button></div></div></div>
 
@@ -59,6 +61,7 @@
 <script src="js/editor.js"></script>
 <script src="js/pptx.js"></script>
 <script src="js/io.js"></script>
+<script src="js/import.js"></script>
 <script src="js/ui.js"></script>
 </body>
 </html>

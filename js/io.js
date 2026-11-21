@@ -149,6 +149,7 @@
   /* ---------- 開啟檔案 ---------- */
   io.openFile = async function (file) {
     const base = file.name.replace(/\.[^.]+$/, '');
+    if (VL.importer.isImage(file)) return VL.importer.open(file);
     if (/\.(docx|pptx)$/i.test(file.name)) {
       const res = await io.scanOffice(file);
       if (!res.found.length) throw new Error('這個檔案裡找不到由本工具繪製的圖。\n（請確認圖片是以本工具匯出的 SVG 插入的）');

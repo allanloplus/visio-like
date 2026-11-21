@@ -95,3 +95,12 @@ aside h3 { margin: 14px 0 6px; font-size: 12px; color: #6b7483; font-weight: 600
 #modal li { margin: 3px 0; }
 #modal kbd { border: 1px solid #c9ced8; border-bottom-width: 2px; border-radius: 3px; padding: 0 4px; background: #f6f7f9; font: inherit; }
 #modal .pick { display: block; width: 100%; text-align: left; margin: 6px 0; padding: 8px 10px; }
+
+.imp-preview { max-width: 100%; max-height: 200px; display: block; margin: 6px auto; border: 1px solid #d5d9e0; }
+#modal .row input[type=password] { border: 1px solid #c9ced8; border-radius: 4px; padding: 5px 8px; }
+#modal textarea { border: 1px solid #c9ced8; border-radius: 4px; padding: 6px; }
+#ref-img { position: absolute; left: 12px; bottom: 12px; width: 240px; background: #fff; border: 1px solid #b6bcc7; border-radius: 6px; box-shadow: 0 4px 14px rgba(0,0,0,.18); z-index: 4; cursor: zoom-in; }
+#ref-img.big { width: min(70%, 900px); cursor: zoom-out; }
+#ref-img .bar { display: flex; justify-content: space-between; align-items: center; padding: 3px 4px 3px 10px; color: #4a5361; font-size: 12px; }
+#ref-img .bar button { border: none; padding: 2px 6px; }
+#ref-img img { display: block; width: 100%; max-height: 80vh; object-fit: contain; border-top: 1px solid #e3e6eb; }
