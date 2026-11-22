@@ -107,7 +107,7 @@
       s += `<circle class="ep" data-ep="${edges[0].id}:to" cx="${b.x}" cy="${b.y}" r="${5 / z}" stroke-width="${sw}"/>`;
     }
     const hn = E.hover && node(E.hover);
-    if (hn && hn.type !== 'pool' && !hn.mm && !(drag && (drag.type === 'move' || drag.type === 'resize'))) {
+    if (hn && hn.type !== 'pool' && !(drag && (drag.type === 'move' || drag.type === 'resize'))) {
       for (const side of VL.SIDES) {
         const p = VL.portPos(hn, side);
         s += `<circle class="port" data-port="${hn.id}:${side}" cx="${p.x}" cy="${p.y}" r="${5 / z}" stroke-width="${1.5 / z}"/>`;
@@ -163,7 +163,7 @@
       const g = el.closest && el.closest('#content [data-id]');
       if (!g) continue;
       const n = node(g.dataset.id);
-      if (n && n.type !== 'pool' && !n.mm && n.id !== exceptId) return n;
+      if (n && n.type !== 'pool' && n.id !== exceptId) return n;
     }
     return null;
   }
@@ -308,6 +308,9 @@
         E.sel.clear();
         return E.render();
       }
+      // 組織圖方塊之間拉的線預設為「協調關係」：虛線、無箭頭
+      const org = (end) => { const m = end.id && node(end.id); return !!(m && m.mm && VL.mm.isOrg(E.doc, m)); };
+      if (dg.isNew && org(e.from) && org(e.to)) Object.assign(e.style, { dash: 'dash', endArrow: false });
       if (dg.moved) return E.commit();
     } else if (dg.type === 'band') {
       const b = { x: Math.min(band.x0, band.x1), y: Math.min(band.y0, band.y1), w: Math.abs(band.x1 - band.x0), h: Math.abs(band.y1 - band.y0) };
@@ -516,7 +519,7 @@
   E.mmAdd = function (how) {
     const n = E.selNodes()[0];
     if (!n || !n.mm) return;
-    const c = how === 'child' ? VL.mm.addChild(E.doc, n) : VL.mm.addSibling(E.doc, n);
+    const c = how === 'staff' ? VL.mm.addStaff(E.doc, n) : how === 'child' ? VL.mm.addChild(E.doc, n) : VL.mm.addSibling(E.doc, n);
     E.sel = new Set([c.id]);
     E.commit();
     E.startEdit({ id: c.id, field: 'text' });

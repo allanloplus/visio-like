@@ -25,16 +25,27 @@
     n.h = Math.max(44, Math.ceil((lines.length * st.fontSize * 1.3 + 16) / 2) * 2);
   }
   /* 組織圖：子樹寬度與由上往下的擺放 */
-  const OHG = 24, OVG = 46;
+  const OHG = 24, OVG = 46, SGAP = 30, SVG_ = 14;
+  const line = (doc, id) => kids(doc, id).filter((k) => !k.mm.staff);   // 直屬下層
+  const staff = (doc, id) => kids(doc, id).filter((k) => k.mm.staff);   // 幕僚（掛在主管下方主幹的兩側）
   function subW(doc, n) {
-    const ks = kids(doc, n.id);
-    if (!ks.length) return n.w;
-    return Math.max(n.w, ks.reduce((a, k) => a + subW(doc, k), 0) + OHG * (ks.length - 1));
+    const ks = line(doc, n.id), ss = staff(doc, n.id);
+    let w = n.w;
+    if (ss.length) w = Math.max(w, 2 * (SGAP + Math.max(...ss.map((s) => s.w))));
+    if (ks.length) w = Math.max(w, ks.reduce((a, k) => a + subW(doc, k), 0) + OHG * (ks.length - 1));
+    return w;
   }
   function placeOrg(doc, n, left, top) {
-    const W = subW(doc, n), ks = kids(doc, n.id);
+    const W = subW(doc, n), ks = line(doc, n.id), ss = staff(doc, n.id);
     n.x = Math.round(left + W / 2 - n.w / 2);
     n.y = top;
+    // 幕僚：每列兩個，先右後左
+    const cx = n.x + n.w / 2, sh = Math.max(0, ...ss.map((s) => s.h));
+    ss.forEach((s, i) => {
+      s.x = Math.round(i % 2 === 0 ? cx + SGAP : cx - SGAP - s.w);
+      s.y = Math.round(top + n.h + 18 + Math.floor(i / 2) * (sh + SVG_) + (sh - s.h) / 2);
+    });
+    if (ss.length) top += 18 + Math.ceil(ss.length / 2) * (sh + SVG_) - SVG_ - 6;
     const total = ks.reduce((a, k) => a + subW(doc, k), 0) + OHG * Math.max(0, ks.length - 1);
     let x = left + (W - total) / 2;
     // 同層方塊上緣對齊，讓上方的橫向連線落在同一高度
@@ -114,6 +125,7 @@
       const sibs = kids(doc, parent.id);
       let n;
       if (isOrg(doc, parent)) {
+        if (parent.mm.staff) { afterId = parent.id; parent = VL.node(doc, parent.mm.parent); }
         n = !parent.mm.parent
           ? make('部門名稱', parent.id, 'r', { fill: '#2E75B6', stroke: '#1F4E79', color: '#FFFFFF', fontSize: 14 }, 'process')
           : make('單位 / 職稱', parent.id, 'r', { fill: '#DDEBF7', stroke: '#2F5597', fontSize: 13 }, 'process');
@@ -134,8 +146,18 @@
       if (!parent) return this.addChild(doc, node);
       const n = this.addChild(doc, parent, node.id);
       n.mm.side = node.mm.side;
+      if (node.mm.staff) { n.mm.staff = true; n.text = node.text && '幕僚 / 秘書'; Object.assign(n.style, VL.clone(node.style)); }
       if (!parent.mm.parent || isOrg(doc, node)) return n;
       n.style.stroke = node.style.stroke;
+      return n;
+    },
+    /* 組織圖：在主管下方新增幕僚位置 */
+    addStaff(doc, node) {
+      const boss = node.mm.staff ? VL.node(doc, node.mm.parent) : node;
+      const n = this.addChild(doc, boss);
+      n.mm.staff = true;
+      n.text = '幕僚 / 秘書';
+      Object.assign(n.style, { fill: '#FFFFFF', stroke: '#2F5597', color: '#1F1F1F', fontSize: 13, bold: false });
       return n;
     },
     flip(doc, node) {
@@ -153,7 +175,11 @@
         const p = VL.node(doc, c.mm.parent);
         if (!p) continue;
         if (isOrg(doc, c)) {
-          out.push({ p, c, org: true, a: { x: p.x + p.w / 2, y: p.y + p.h }, b: { x: c.x + c.w / 2, y: c.y } });
+          const pcx = p.x + p.w / 2;
+          if (c.mm.staff) {
+            const right = c.x + c.w / 2 >= pcx;
+            out.push({ p, c, org: true, staff: true, right, a: { x: pcx, y: p.y + p.h }, b: { x: right ? c.x : c.x + c.w, y: c.y + c.h / 2 } });
+          } else out.push({ p, c, org: true, my: c.y - OVG / 2, a: { x: pcx, y: p.y + p.h }, b: { x: c.x + c.w / 2, y: c.y } });
           continue;
         }
         const right = c.x + c.w / 2 >= p.x + p.w / 2;

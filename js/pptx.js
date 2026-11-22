@@ -134,10 +134,14 @@
     let tree = '';
     doc.nodes.filter((n) => n.type === 'pool').forEach((n) => (tree += pool(n)));
     VL.mm.links(doc).forEach((l) => {
+      if (l.org && l.staff) {
+        tree += connector('bentConnector2', l.a, l.b, { st: { stroke: '#595959', strokeWidth: 1.5 }, vert: true, from: { node: l.p, side: 'b' }, to: { node: l.c, side: l.right ? 'l' : 'r' } });
+        return;
+      }
       if (l.org) {
         const straight = Math.abs(l.a.x - l.b.x) < 0.5;
         tree += connector(straight ? 'straightConnector1' : 'bentConnector3', l.a, l.b,
-          { st: { stroke: '#595959', strokeWidth: 1.5 }, vert: !straight, adj: straight ? null : 0.5, from: { node: l.p, side: 'b' }, to: { node: l.c, side: 't' } });
+          { st: { stroke: '#595959', strokeWidth: 1.5 }, vert: !straight, adj: straight ? null : (l.my - l.a.y) / (l.b.y - l.a.y), from: { node: l.p, side: 'b' }, to: { node: l.c, side: 't' } });
         return;
       }
       const st = { stroke: l.c.style.stroke === 'none' ? '#7F7F7F' : l.c.style.stroke, strokeWidth: 1.6 };

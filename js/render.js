@@ -106,8 +106,10 @@
   }
 
   function linkSvg(l) {
+    if (l.org && l.staff)
+      return `<path d="M${f2(l.a.x)} ${f2(l.a.y)} L${f2(l.a.x)} ${f2(l.b.y)} L${f2(l.b.x)} ${f2(l.b.y)}" fill="none" stroke="#595959" stroke-width="1.5" stroke-linejoin="round"/>`;
     if (l.org) {
-      const my = f2(l.a.y + (l.b.y - l.a.y) / 2);
+      const my = f2(l.my);
       return `<path d="M${f2(l.a.x)} ${f2(l.a.y)} L${f2(l.a.x)} ${my} L${f2(l.b.x)} ${my} L${f2(l.b.x)} ${f2(l.b.y)}" fill="none" stroke="#595959" stroke-width="1.5" stroke-linejoin="round"/>`;
     }
     const mx = (l.a.x + l.b.x) / 2;
