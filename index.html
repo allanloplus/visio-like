@@ -13,6 +13,7 @@
     <span class="avatars"><img src="img/allan-face.webp" alt="Allan"><img src="img/arale-face.webp" alt="阿拉蕾"></span>
     <span class="name" id="brand">Allan's 隨意畫流程圖</span>
   </div>
+  <div class="tools">
   <span class="grp">
     <button data-act="new" title="清空畫布，開始新圖">新增</button>
     <button data-act="open" title="開啟本工具儲存的 SVG，或含有本工具圖片的 Word / PowerPoint 檔">開啟…</button>
@@ -42,6 +43,7 @@
     <button data-act="help">說明</button>
     <button data-act="about">關於</button>
   </span>
+  </div>
 </header>
 <main>
   <aside id="palette"></aside>
@@ -49,6 +51,8 @@
     <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
       <g id="viewport"><g id="content"></g><g id="overlay"></g></g>
     </svg>
+    <button class="fab" id="fab-palette" data-drawer="palette">＋ 圖形</button>
+    <button class="fab" id="fab-props" data-drawer="props">屬性</button>
     <div id="hint">
       <img class="who allan" src="img/allan-full.webp" alt="Allan">
       <div class="bubble"><b>嗨！想畫什麼就畫什麼</b><br>從左側點選或拖曳圖形到畫布開始；<br>手邊有現成的流程圖，按「圖檔轉換」交給阿拉蕾重畫。</div>
@@ -57,6 +61,7 @@
   </div>
   <aside id="props"></aside>
 </main>
+<div id="scrim"></div>
 <input type="file" id="file-input" accept=".svg,.docx,.pptx" hidden>
 <input type="file" id="image-input" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp" hidden>
 <div id="toast" hidden><img alt=""><span></span></div>

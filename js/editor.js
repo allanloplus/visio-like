@@ -21,7 +21,8 @@
     svg.addEventListener('pointerdown', onDown);
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
-    svg.addEventListener('dblclick', onDbl);
+    svg.addEventListener('dblclick', (e) => { if (!E.touch) onDbl(e); });
+    window.addEventListener('pointercancel', (e) => { endTouch(e); drag = null; band = null; });
     svg.addEventListener('wheel', onWheel, { passive: false });
     svg.addEventListener('contextmenu', (e) => e.preventDefault());
     window.addEventListener('keydown', onKey);
@@ -77,7 +78,7 @@
   }
   const HANDLES = { nw: [0, 0], n: [0.5, 0], ne: [1, 0], e: [1, 0.5], se: [1, 1], s: [0.5, 1], sw: [0, 1], w: [0, 0.5] };
   function drawOverlay() {
-    const z = E.view.z, hs = 4 / z, sw = 1 / z;
+    const z = E.view.z, T = E.touch ? 1.9 : 1, hs = (4 * T) / z, sw = 1 / z;  // 觸控時把控制點放大
     let s = '';
     const nodes = E.selNodes(), edges = E.selEdges();
     for (const n of nodes) s += `<rect class="sel" x="${n.x - 2}" y="${n.y - 2}" width="${n.w + 4}" height="${n.h + 4}" stroke-width="${sw}" stroke-dasharray="${4 / z} ${3 / z}"/>`;
@@ -103,14 +104,15 @@
     if (edges.length === 1 && !nodes.length) {
       const r = VL.router.route(edges[0], E.doc);
       const a = r.pts[0], b = r.pts[r.pts.length - 1];
-      s += `<circle class="ep" data-ep="${edges[0].id}:from" cx="${a.x}" cy="${a.y}" r="${5 / z}" stroke-width="${sw}"/>`;
-      s += `<circle class="ep" data-ep="${edges[0].id}:to" cx="${b.x}" cy="${b.y}" r="${5 / z}" stroke-width="${sw}"/>`;
+      s += `<circle class="ep" data-ep="${edges[0].id}:from" cx="${a.x}" cy="${a.y}" r="${(5 * T) / z}" stroke-width="${sw}"/>`;
+      s += `<circle class="ep" data-ep="${edges[0].id}:to" cx="${b.x}" cy="${b.y}" r="${(5 * T) / z}" stroke-width="${sw}"/>`;
     }
-    const hn = E.hover && node(E.hover);
+    // 觸控沒有滑鼠懸停：選取單一圖形時就顯示連接點
+    const hn = (E.hover && node(E.hover)) || (E.touch && nodes.length === 1 && !edges.length ? nodes[0] : null);
     if (hn && hn.type !== 'pool' && !(drag && (drag.type === 'move' || drag.type === 'resize'))) {
       for (const side of VL.SIDES) {
         const p = VL.portPos(hn, side);
-        s += `<circle class="port" data-port="${hn.id}:${side}" cx="${p.x}" cy="${p.y}" r="${5 / z}" stroke-width="${1.5 / z}"/>`;
+        s += `<circle class="port" data-port="${hn.id}:${side}" cx="${p.x}" cy="${p.y}" r="${(5 * T) / z}" stroke-width="${1.5 / z}"/>`;
       }
     }
     if (band) {
@@ -191,8 +193,34 @@
     drag = Object.assign(drag || {}, { type: 'move', start: p, orig, ends, moved: false });
   }
 
+  /* 觸控：雙指縮放 / 平移 */
+  const touches = new Map();
+  let lastTap = { id: null, t: 0 };
+  function pinchState() {
+    const [a, b] = [...touches.values()], r = svg.getBoundingClientRect();
+    return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, cx: (a.x + b.x) / 2 - r.left, cy: (a.y + b.y) / 2 - r.top };
+  }
+  function endTouch(evt) {
+    touches.delete(evt.pointerId);
+    if (drag && drag.type === 'pinch' && touches.size < 2) { drag = null; E.render(); }
+  }
+
   function onDown(evt) {
     if (editing) commitEdit();
+    if (evt.pointerType === 'touch') {
+      if (!E.touch) { E.touch = true; }
+      touches.set(evt.pointerId, { x: evt.clientX, y: evt.clientY });
+      if (touches.size === 2) {
+        // 第二指落下：放棄尚未成立的拖曳，改為縮放
+        if (drag && drag.type === 'move' && drag.moved) { drag.orig.forEach((o) => { o.n.x = o.x; o.n.y = o.y; }); }
+        if (drag && drag.type === 'end' && drag.isNew) E.doc.edges = E.doc.edges.filter((x) => x !== drag.edge);
+        band = null;
+        const s = pinchState();
+        drag = { type: 'pinch', d0: s.d, z0: E.view.z, px: (s.cx - E.view.x) / E.view.z, py: (s.cy - E.view.y) / E.view.z };
+        return;
+      }
+      if (touches.size > 2) return;
+    }
     const t = evt.target, p = toDoc(evt);
     if (evt.button === 1 || evt.button === 2 || (evt.button === 0 && spaceDown)) {
       drag = { type: 'pan', sx: evt.clientX, sy: evt.clientY, vx: E.view.x, vy: E.view.y };
@@ -228,6 +256,9 @@
       else if (!E.sel.has(id)) E.sel = new Set([id]);
       else drag.clickId = id;
       startMove(p);
+    } else if (evt.pointerType === 'touch') {
+      // 觸控：在空白處拖曳是平移畫布，輕點則取消選取
+      drag = { type: 'pan', sx: evt.clientX, sy: evt.clientY, vx: E.view.x, vy: E.view.y, tap: true };
     } else {
       if (!evt.shiftKey) E.sel.clear();
       band = { x0: p.x, y0: p.y, x1: p.x, y1: p.y };
@@ -239,6 +270,16 @@
   }
 
   function onMove(evt) {
+    if (touches.has(evt.pointerId)) touches.set(evt.pointerId, { x: evt.clientX, y: evt.clientY });
+    if (drag && drag.type === 'pinch') {
+      if (touches.size < 2) return;
+      const s = pinchState(), z = Math.min(4, Math.max(0.2, (drag.z0 * s.d) / drag.d0));
+      E.view = { z, x: s.cx - drag.px * z, y: s.cy - drag.py * z };
+      applyView();
+      drawOverlay();
+      if (E.onChange) E.onChange();
+      return;
+    }
     if (!drag) {
       if (evt.target.closest && evt.target.closest('#canvas')) {
         const port = evt.target.closest('[data-port]'), g = evt.target.closest('#content [data-id]');
@@ -293,11 +334,22 @@
   }
 
   function onUp(evt) {
+    const wasTouch = touches.has(evt.pointerId);
+    if (wasTouch) { endTouch(evt); E.hover = null; }
     if (!drag) return;
+    if (drag.type === 'pinch') return;
     const dg = drag;
     drag = null;
+    if (dg.type === 'pan' && dg.tap && Math.hypot(evt.clientX - dg.sx, evt.clientY - dg.sy) < 6) E.sel.clear();
     if (dg.type === 'move') {
       if (dg.moved) return E.commit();
+      // 觸控的「點兩下」：自行判斷，直接進入文字編輯
+      const tapId = dg.clickId || [...E.sel][0];
+      if (wasTouch && tapId) {
+        const now = Date.now();
+        if (lastTap.id === tapId && now - lastTap.t < 400) { lastTap = { id: null, t: 0 }; E.sel = new Set([tapId]); drawOverlay(); return E.startEdit(editTarget(tapId, toDoc(evt))); }
+        lastTap = { id: tapId, t: now };
+      }
       if (dg.clickId) E.sel = new Set([dg.clickId]);
     } else if (dg.type === 'resize' || dg.type === 'lane') {
       return E.commit();
@@ -364,7 +416,7 @@
     const w = Math.max(box.w * z, 90), h = Math.max(box.h * z, 30);
     Object.assign(ta.style, {
       left: (box.x + box.w / 2) * z + E.view.x - w / 2 + 'px', top: (box.y + box.h / 2) * z + E.view.y - h / 2 + 'px',
-      width: w + 'px', height: h + 'px', fontSize: Math.max(11, fs * z) + 'px',
+      width: w + 'px', height: h + 'px', fontSize: Math.max(E.touch ? 16 : 11, fs * z) + 'px',  // iOS 在字級小於 16px 時會自動放大頁面
     });
     stage.appendChild(ta);
     editing = { tg, ta };
@@ -463,6 +515,7 @@
     E.sel = new Set(c.nodes.map((n) => n.id).concat(c.edges.map((e) => e.id)));
     E.commit();
   };
+  E.editSelected = () => { if (E.sel.size === 1) E.startEdit(editTarget([...E.sel][0])); };
   E.selectAll = () => { E.sel = new Set(E.doc.nodes.map((n) => n.id).concat(E.doc.edges.map((e) => e.id))); E.render(); };
 
   /* ---------- 樣式 / 排列 ---------- */

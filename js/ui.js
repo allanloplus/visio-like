@@ -39,6 +39,14 @@
     try { await fn(); if (ok) ui.toast(ok); } catch (err) { console.error(err); ui.toast('⚠ ' + (err.message || err), 6000); }
   };
 
+  /* ---------- 手機版：側邊面板改為抽屜 ---------- */
+  function closeDrawers() { document.body.classList.remove('show-palette', 'show-props'); }
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-drawer]');
+    if (b) { const c = 'show-' + b.dataset.drawer, on = document.body.classList.contains(c); closeDrawers(); if (!on) document.body.classList.add(c); }
+    else if (e.target.id === 'scrim') closeDrawers();
+  });
+
   /* ---------- 調色盤 ---------- */
   function buildPalette() {
     const pal = $('#palette');
@@ -51,7 +59,7 @@
       '<h3>組織圖</h3><div class="pal-wide"><button draggable="true" data-type="orgchart">⛶ 新增組織圖</button></div>' +
       `<h3>流程圖</h3><div class="pal-grid">${grp('flow')}</div>` +
       `<h3>常用圖示</h3><div class="pal-grid">${grp('icon')}</div>`;
-    pal.addEventListener('click', (e) => { const b = e.target.closest('[data-type]'); if (b) E.addNode(b.dataset.type); });
+    pal.addEventListener('click', (e) => { const b = e.target.closest('[data-type]'); if (b) { E.addNode(b.dataset.type); closeDrawers(); } });
     pal.addEventListener('dragstart', (e) => { const b = e.target.closest('[data-type]'); if (b) e.dataTransfer.setData('text/vl-type', b.dataset.type); });
     const stage = $('#stage');
     stage.addEventListener('dragover', (e) => e.preventDefault());
@@ -72,7 +80,7 @@
     const p = $('#props');
     if (!items.length) {
       p.innerHTML = '<h3>屬性</h3><p class="muted">選取圖形或連接線後，可在此調整樣式。</p>' +
-        '<h3>小技巧</h3><p class="muted">・滑鼠移到圖形上，從橘色圓點拖曳即可拉出連接線<br>・按兩下圖形或線條可輸入文字<br>・空白鍵＋拖曳 可平移畫布<br>・Ctrl＋滾輪 可縮放</p>';
+        '<h3>小技巧</h3><p class="muted">・滑鼠移到圖形上，從橘色圓點拖曳即可拉出連接線<br>・按兩下圖形或線條可輸入文字<br>・空白鍵＋拖曳 可平移畫布<br>・Ctrl＋滾輪 可縮放<br>・手機／平板：點一下選取、點兩下改字、單指拖空白處平移、雙指縮放</p>';
       return;
     }
     const st = items[0].style, pool = nodes.find((n) => n.type === 'pool'), mm = nodes.find((n) => n.mm);
@@ -100,7 +108,7 @@
       if (nodes.length > 1) h += '<div class="btns three">' + [['left', '靠左'], ['center', '水平置中'], ['right', '靠右'], ['top', '靠上'], ['middle', '垂直置中'], ['bottom', '靠下'], ['dh', '水平等距'], ['dv', '垂直等距']]
         .map((a) => `<button data-align="${a[0]}">${a[1]}</button>`).join('') + '</div>';
     }
-    h += '<h3>　</h3><div class="btns"><button data-del>刪除 (Del)</button></div>';
+    h += `<h3>　</h3><div class="btns">${items.length === 1 ? '<button data-edit>✎ 編輯文字</button>' : ''}<button data-del>刪除 (Del)</button></div>`;
     p.innerHTML = h;
   }
   function bindProps() {
@@ -117,6 +125,7 @@
       else if (d.order) E.order(d.order);
       else if (d.align) E.align(d.align);
       else if ('del' in d) E.del();
+      else if ('edit' in d) { closeDrawers(); E.editSelected(); }
     });
     p.addEventListener('change', (e) => {
       const t = e.target, d = t.dataset;
@@ -138,6 +147,9 @@
   <li>滑鼠移到圖形上會出現<b>橘色連接點</b>，拖曳到另一個圖形即可連線；圖形移動時連線會跟著走。</li>
   <li>按兩下圖形／線條／甬道標題可編輯文字（<kbd>Ctrl</kbd>+<kbd>Enter</kbd> 完成，<kbd>Esc</kbd> 取消）。</li>
   <li><kbd>空白鍵</kbd>+拖曳或滑鼠右鍵拖曳可平移；<kbd>Ctrl</kbd>+滾輪縮放；<kbd>Ctrl</kbd>+<kbd>Z</kbd>/<kbd>Y</kbd> 復原重做；<kbd>Ctrl</kbd>+<kbd>D</kbd> 複製一份。</li></ul>
+  <h4>手機與平板</h4>
+  <ul><li>左下「＋ 圖形」開啟圖形清單，右下「屬性」調整樣式、編輯文字或刪除；工具列可左右滑動。</li>
+  <li>點一下圖形選取（會出現橘色連接點，拖到另一個圖形即可連線）；點兩下改文字；單指拖曳空白處平移；雙指縮放。</li></ul>
   <h4>甬道圖</h4>
   <ul><li>新增水平或垂直甬道後，把流程圖形放進各泳道；搬移甬道時裡面的圖形會一起移動。</li>
   <li>選取甬道後，拖曳藍色方塊調整每條泳道的大小，右側面板可增減泳道。</li></ul>
@@ -204,6 +216,7 @@
   E.onChange = () => {
     buildProps();
     $('#zoom-label').textContent = Math.round(E.view.z * 100) + '%';
+    $('#fab-props').classList.toggle('on', E.sel.size > 0);
     $('#hint').hidden = E.doc.nodes.length + E.doc.edges.length > 0;
   };
   E.init();
