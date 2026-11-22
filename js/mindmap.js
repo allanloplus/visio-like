@@ -1,4 +1,5 @@
-/* 心智圖：節點以 mm:{parent, side} 表示樹狀關係，位置由自動排版決定 */
+/* 心智圖與組織圖：節點以 mm:{parent, side} 表示樹狀關係，位置由自動排版決定。
+   根節點 mm.org 為 true 時是組織圖（由上往下展開、直角連線），否則為心智圖（左右展開、曲線） */
 (function () {
   const VL = window.VL;
   const HG = 46, VG = 14;
@@ -14,6 +15,36 @@
     kids(doc, id).forEach((k) => subtree(doc, k.id, out));
     return out;
   };
+
+  const isOrg = (doc, n) => { const r = rootOf(doc, n); return !!(r && r.mm && r.mm.org); };
+  function sizeOrg(n) {
+    const st = n.style;
+    const lines = VL.text.wrap(n.text || ' ', 180, st.fontSize, st.bold);
+    const tw = Math.max(...lines.map((l) => VL.text.width(l, st.fontSize, st.bold)));
+    n.w = Math.max(110, Math.ceil((tw + 28) / 10) * 10);
+    n.h = Math.max(44, Math.ceil((lines.length * st.fontSize * 1.3 + 16) / 2) * 2);
+  }
+  /* 組織圖：子樹寬度與由上往下的擺放 */
+  const OHG = 24, OVG = 46;
+  function subW(doc, n) {
+    const ks = kids(doc, n.id);
+    if (!ks.length) return n.w;
+    return Math.max(n.w, ks.reduce((a, k) => a + subW(doc, k), 0) + OHG * (ks.length - 1));
+  }
+  function placeOrg(doc, n, left, top) {
+    const W = subW(doc, n), ks = kids(doc, n.id);
+    n.x = Math.round(left + W / 2 - n.w / 2);
+    n.y = top;
+    const total = ks.reduce((a, k) => a + subW(doc, k), 0) + OHG * Math.max(0, ks.length - 1);
+    let x = left + (W - total) / 2;
+    // 同層方塊上緣對齊，讓上方的橫向連線落在同一高度
+    for (const k of ks) { placeOrg(doc, k, x, top + n.h + OVG); x += subW(doc, k) + OHG; }
+  }
+  function layoutOrg(doc, root) {
+    const cx = root.x + root.w / 2, top = root.y;
+    subtree(doc, root.id).forEach((id) => sizeOrg(VL.node(doc, id)));
+    placeOrg(doc, root, cx - subW(doc, root) / 2, top);
+  }
 
   function size(n) {
     const st = n.style, pad = n.mm.parent ? 14 : 22;
@@ -49,14 +80,15 @@
     }
   }
 
-  function make(text, parent, side, style) {
-    return { id: VL.uid(), type: 'round', x: 0, y: 0, w: 80, h: 30, text, style: Object.assign(VL.defaultStyle(), style), mm: { parent, side } };
+  function make(text, parent, side, style, type) {
+    return { id: VL.uid(), type: type || 'round', x: 0, y: 0, w: 80, h: 30, text, style: Object.assign(VL.defaultStyle(), style), mm: { parent, side } };
   }
 
   VL.mm = {
-    kids, rootOf, subtree,
+    kids, rootOf, subtree, isOrg,
     layoutAll(doc) {
       doc.nodes.filter((n) => n.mm && !n.mm.parent).forEach((r) => {
+        if (r.mm.org) return layoutOrg(doc, r);
         const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
         size(r);
         r.x = Math.round(cx - r.w / 2); r.y = Math.round(cy - r.h / 2);
@@ -70,10 +102,22 @@
       for (let i = 0; i < 3; i++) this.addChild(doc, root);
       return root;
     },
+    createOrg(doc, x, y) {
+      const root = make('總經理', null, 'r', { fill: '#1F4E79', stroke: '#1F4E79', color: '#FFFFFF', fontSize: 15, bold: true }, 'process');
+      root.mm.org = true;
+      root.w = 120; root.h = 46; root.x = x - 60; root.y = y;
+      doc.nodes.push(root);
+      for (let i = 0; i < 3; i++) this.addChild(doc, root);
+      return root;
+    },
     addChild(doc, parent, afterId) {
       const sibs = kids(doc, parent.id);
       let n;
-      if (!parent.mm.parent) {
+      if (isOrg(doc, parent)) {
+        n = !parent.mm.parent
+          ? make('部門名稱', parent.id, 'r', { fill: '#2E75B6', stroke: '#1F4E79', color: '#FFFFFF', fontSize: 14 }, 'process')
+          : make('單位 / 職稱', parent.id, 'r', { fill: '#DDEBF7', stroke: '#2F5597', fontSize: 13 }, 'process');
+      } else if (!parent.mm.parent) {
         const color = COLORS[sibs.length % COLORS.length];
         const r = sibs.filter((k) => k.mm.side === 'r').length;
         n = make('分支主題', parent.id, r <= sibs.length - r ? 'r' : 'l', { fill: VL.mix(color, '#FFFFFF', 0.82), stroke: color, fontSize: 14 });
@@ -90,7 +134,7 @@
       if (!parent) return this.addChild(doc, node);
       const n = this.addChild(doc, parent, node.id);
       n.mm.side = node.mm.side;
-      if (!parent.mm.parent) return n;
+      if (!parent.mm.parent || isOrg(doc, node)) return n;
       n.style.stroke = node.style.stroke;
       return n;
     },
@@ -108,6 +152,10 @@
         if (!c.mm || !c.mm.parent) continue;
         const p = VL.node(doc, c.mm.parent);
         if (!p) continue;
+        if (isOrg(doc, c)) {
+          out.push({ p, c, org: true, a: { x: p.x + p.w / 2, y: p.y + p.h }, b: { x: c.x + c.w / 2, y: c.y } });
+          continue;
+        }
         const right = c.x + c.w / 2 >= p.x + p.w / 2;
         out.push({
           p, c, right,

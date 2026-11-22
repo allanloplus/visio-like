@@ -106,6 +106,10 @@
   }
 
   function linkSvg(l) {
+    if (l.org) {
+      const my = f2(l.a.y + (l.b.y - l.a.y) / 2);
+      return `<path d="M${f2(l.a.x)} ${f2(l.a.y)} L${f2(l.a.x)} ${my} L${f2(l.b.x)} ${my} L${f2(l.b.x)} ${f2(l.b.y)}" fill="none" stroke="#595959" stroke-width="1.5" stroke-linejoin="round"/>`;
+    }
     const mx = (l.a.x + l.b.x) / 2;
     return `<path d="M${f2(l.a.x)} ${f2(l.a.y)} C${f2(mx)} ${f2(l.a.y)} ${f2(mx)} ${f2(l.b.y)} ${f2(l.b.x)} ${f2(l.b.y)}" fill="none" stroke="${l.c.style.stroke === 'none' ? '#7F7F7F' : l.c.style.stroke}" stroke-width="1.6"/>`;
   }

@@ -412,6 +412,8 @@
       E.doc.nodes.unshift(n);
     } else if (type === 'mindmap') {
       n = VL.mm.createRoot(E.doc, x, y);
+    } else if (type === 'orgchart') {
+      n = VL.mm.createOrg(E.doc, x, y - 80);
     } else {
       const def = VL.shapes[type];
       n = {

@@ -44,6 +44,7 @@
       '<h3>甬道圖（泳道）</h3><div class="pal-wide">' +
       '<button draggable="true" data-type="pool-h">▤ 水平甬道</button><button draggable="true" data-type="pool-v">▥ 垂直甬道</button></div>' +
       '<h3>心智圖</h3><div class="pal-wide"><button draggable="true" data-type="mindmap">✳ 新增心智圖</button></div>' +
+      '<h3>組織圖</h3><div class="pal-wide"><button draggable="true" data-type="orgchart">⛶ 新增組織圖</button></div>' +
       `<h3>流程圖</h3><div class="pal-grid">${grp('flow')}</div>` +
       `<h3>常用圖示</h3><div class="pal-grid">${grp('icon')}</div>`;
     pal.addEventListener('click', (e) => { const b = e.target.closest('[data-type]'); if (b) E.addNode(b.dataset.type); });
@@ -88,7 +89,8 @@
         <div class="btns"><button data-toggle="startArrow" class="${e.style.startArrow ? 'on' : ''}">◀ 起點箭頭</button><button data-toggle="endArrow" class="${e.style.endArrow ? 'on' : ''}">終點箭頭 ▶</button></div>`;
     }
     if (pool) h += '<h3>甬道</h3><div class="btns"><button data-pool="add">＋ 新增泳道</button><button data-pool="remove">－ 移除最後</button></div><div class="btns"><button data-pool="flip">水平 ⇄ 垂直</button></div><p class="muted">選取甬道後，拖曳藍色方塊可調整各泳道大小；按兩下標題可改名稱。</p>';
-    if (mm) h += '<h3>心智圖</h3><div class="btns"><button data-mm="child">＋ 子主題 (Tab)</button><button data-mm="sibling">＋ 同層 (Enter)</button></div><div class="btns"><button data-mm="flip">移到另一側</button></div>';
+    if (mm && VL.mm.isOrg(E.doc, mm)) h += '<h3>組織圖</h3><div class="btns"><button data-mm="child">＋ 下屬 (Tab)</button><button data-mm="sibling">＋ 同層 (Enter)</button></div><p class="muted">按兩下或 F2 改文字；Shift+Enter 可換行（例如第二行寫姓名或職稱）。</p>';
+    else if (mm) h += '<h3>心智圖</h3><div class="btns"><button data-mm="child">＋ 子主題 (Tab)</button><button data-mm="sibling">＋ 同層 (Enter)</button></div><div class="btns"><button data-mm="flip">移到另一側</button></div>';
     if (nodes.length) {
       h += '<h3>排列</h3><div class="btns"><button data-order="front">移到最上層</button><button data-order="back">移到最下層</button></div>';
       if (nodes.length > 1) h += '<div class="btns three">' + [['left', '靠左'], ['center', '水平置中'], ['right', '靠右'], ['top', '靠上'], ['middle', '垂直置中'], ['bottom', '靠下'], ['dh', '水平等距'], ['dv', '垂直等距']]
@@ -137,6 +139,8 @@
   <li>選取甬道後，拖曳藍色方塊調整每條泳道的大小，右側面板可增減泳道。</li></ul>
   <h4>心智圖</h4>
   <ul><li>選取主題後按 <kbd>Tab</kbd> 新增子主題、<kbd>Enter</kbd> 新增同層主題、<kbd>F2</kbd> 改文字、<kbd>Del</kbd> 刪除整個分支。版面會自動排列。</li></ul>
+  <h4>組織圖</h4>
+  <ul><li>新增組織圖後，選取任一方塊按 <kbd>Tab</kbd> 新增下屬、<kbd>Enter</kbd> 新增同層、<kbd>F2</kbd> 改文字（<kbd>Shift</kbd>+<kbd>Enter</kbd> 換行）、<kbd>Del</kbd> 刪除整個分支。版面由上往下自動排列。</li></ul>
   <h4>放進 Word / PowerPoint，並保持可修改</h4>
   <ul><li><b>PowerPoint</b>：按「PowerPoint」匯出，得到的是 PowerPoint <b>原生圖案與接點</b>，可直接在簡報內改字、改色、搬移，也可複製貼到 Word。</li>
   <li><b>Word</b>：按「Word」匯出，圖案放在 Word 的「繪圖畫布」中，每個圖案與接點都是 <b>Word 原生物件</b>，可直接改字、改色、搬移；把整個畫布複製貼到你的文件即可。太寬的圖會自動改用橫式頁面或等比例縮小。</li>
