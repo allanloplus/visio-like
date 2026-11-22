@@ -139,8 +139,8 @@
   <ul><li>選取主題後按 <kbd>Tab</kbd> 新增子主題、<kbd>Enter</kbd> 新增同層主題、<kbd>F2</kbd> 改文字、<kbd>Del</kbd> 刪除整個分支。版面會自動排列。</li></ul>
   <h4>放進 Word / PowerPoint，並保持可修改</h4>
   <ul><li><b>PowerPoint</b>：按「PowerPoint」匯出，得到的是 PowerPoint <b>原生圖案與接點</b>，可直接在簡報內改字、改色、搬移，也可複製貼到 Word。</li>
-  <li><b>Word</b>：按「Word」匯出一份內含向量圖的 .docx，把圖複製到你的文件；或用「儲存」得到 SVG 後以「插入 → 圖片」放入文件。</li>
-  <li><b>日後要修改</b>：直接用「開啟…」選那份 <b>.docx / .pptx</b>，工具會找出裡面的圖讓你修改，改完按「存回」即可，文件其餘內容不變。</li>
+  <li><b>Word</b>：按「Word」匯出，圖案放在 Word 的「繪圖畫布」中，每個圖案與接點都是 <b>Word 原生物件</b>，可直接改字、改色、搬移；把整個畫布複製貼到你的文件即可。太寬的圖會自動改用橫式頁面或等比例縮小。</li>
+  <li><b>Word（圖片）</b>：整張圖以向量圖片放入 .docx，版面最穩定；要修改時用本工具「開啟…」選那份 .docx，改完按「存回」。</li>
   <li>「複製圖片」可快速貼到任何地方（點陣圖，不可再編輯）。</li></ul>
   <h4>把現成的流程圖圖檔變成可編輯</h4>
   <ul><li>按「圖檔轉換…」選圖檔，或把圖檔拖進畫布，或直接 <kbd>Ctrl</kbd>+<kbd>V</kbd> 貼上截圖。</li>
@@ -160,7 +160,8 @@
     save: () => io.saveSvg(),
     undo: () => E.undo(), redo: () => E.redo(),
     pptx: guard(() => io.savePptx(), '已匯出 PowerPoint，可直接在簡報中編輯圖案'),
-    docx: guard(() => io.saveDocx(), '已匯出 Word；日後可用「開啟…」選這份 .docx 來修改圖'),
+    docx: guard(() => io.saveDocxShapes(), '已匯出 Word，圖案可直接在 Word 中編輯'),
+    docximg: guard(() => io.saveDocx(), '已匯出 Word（圖片）；日後可用「開啟…」選這份 .docx 來修改圖'),
     png: guard(() => io.savePng()),
     copy: guard(() => io.copyPng(), '已複製圖片，可直接貼到 Word / PowerPoint'),
     saveback: guard(() => io.saveBackOffice(), '已產生更新後的檔案'),

@@ -61,6 +61,10 @@
   io.savePptx = async () => download(await VL.pptx.build(E().doc), io.name + '.pptx');
 
   /* ---------- 新 Word 檔（內含向量圖，可再用本工具開啟修改） ---------- */
+  /* Word（原生圖案，可在 Word 內直接編輯） */
+  io.saveDocxShapes = async () => download(await VL.pptx.buildDocx(E().doc, await io.buildPng(E().doc)), io.name + '.docx');
+
+  /* Word（單張向量圖；可再用本工具開啟修改後存回） */
   io.saveDocx = async function () {
     const { svg, w, h } = io.buildSvg(E().doc);
     const png = await io.buildPng(E().doc);

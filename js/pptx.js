@@ -6,7 +6,8 @@
   const NS = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"';
   const XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
   const REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
-  const emu = (v) => Math.round(v * EMU);
+  let K = 1; // 整體縮放（Word 需縮到頁寬內；PowerPoint 為 1）
+  const emu = (v) => Math.round(v * EMU * K);
   const clr = (c) => `<a:solidFill><a:srgbClr val="${c.replace('#', '')}"/></a:solidFill>`;
   const fillXml = (c) => (!c || c === 'none' ? '<a:noFill/>' : clr(c));
   const dashXml = (st) => (st.dash === 'dash' ? '<a:prstDash val="dash"/>' : st.dash === 'dot' ? '<a:prstDash val="sysDot"/>' : '');
@@ -18,7 +19,7 @@
 
   function txBody(text, st, o) {
     o = o || {};
-    const sz = Math.round(st.fontSize * 75);
+    const sz = Math.round(st.fontSize * 75 * K);
     const rpr = (tag) => `<a:${tag} lang="zh-TW" altLang="en-US" sz="${sz}"${st.bold || o.bold ? ' b="1"' : ''}>${clr(st.color)}<a:latin typeface="Calibri"/><a:ea typeface="Microsoft JhengHei"/></a:${tag}>`;
     const paras = String(text || '').split('\n').map((l) =>
       `<a:p><a:pPr algn="ctr"/>${l ? `<a:r>${rpr('rPr')}<a:t>${VL.esc(l)}</a:t></a:r>` : ''}${rpr('endParaRPr')}</a:p>`).join('');
@@ -38,41 +39,65 @@
     }).join('');
     const cxn = open ? '<a:cxnLst/>' :
       '<a:cxnLst><a:cxn ang="16200000"><a:pos x="hc" y="t"/></a:cxn><a:cxn ang="10800000"><a:pos x="l" y="vc"/></a:cxn><a:cxn ang="5400000"><a:pos x="hc" y="b"/></a:cxn><a:cxn ang="0"><a:pos x="r" y="vc"/></a:cxn></a:cxnLst>';
-    const gd = below ? '<a:gdLst><a:gd name="tb" fmla="*/ h 2 1"/></a:gdLst>' : '<a:gdLst/>';
-    const rect = below ? '<a:rect l="l" t="b" r="r" b="tb"/>' : '<a:rect l="l" t="t" r="r" b="b"/>';
+    // 圖示的文字框放在圖形下方，並向左右各加寬半個圖形寬度，避免標籤被折行
+    const gd = below ? '<a:gdLst><a:gd name="tb" fmla="*/ h 2 1"/><a:gd name="tl" fmla="+- 0 0 wd2"/><a:gd name="tr" fmla="+- r wd2 0"/></a:gdLst>' : '<a:gdLst/>';
+    const rect = below ? '<a:rect l="tl" t="b" r="tr" b="tb"/>' : '<a:rect l="l" t="t" r="r" b="b"/>';
     return `<a:custGeom><a:avLst/>${gd}<a:ahLst/>${cxn}${rect}<a:pathLst>${paths}</a:pathLst></a:custGeom>`;
   }
 
-  function build(doc) {
-    doc = VL.clone(doc);
-    VL.mm.layoutAll(doc);
-    const bb = VL.render.bbox(doc), MARGIN = 40;
-    const SW = Math.min(5300, Math.max(1280, Math.ceil(bb.w + MARGIN * 2))), SH = Math.min(5300, Math.max(720, Math.ceil(bb.h + MARGIN * 2)));
-    const ox = Math.round((SW - bb.w) / 2 - bb.x), oy = Math.round((SH - bb.h) / 2 - bb.y);
+  /* ---------- 兩種文件格式的包裝方式 ---------- */
+  const bodyAttrs = (o) => `${o.vert ? ' vert="vert270"' : ''} wrap="${o.nowrap ? 'none' : 'square'}" lIns="45720" tIns="27432" rIns="45720" bIns="27432" anchor="${o.anchor || 'ctr'}"`;
+  const PPT = {
+    sp: (id, name, spPr, text, st, o, txBox) =>
+      `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="${VL.esc(name)}"/><p:cNvSpPr${txBox ? ' txBox="1"' : ''}/><p:nvPr/></p:nvSpPr><p:spPr>${spPr}</p:spPr>${st ? txBody(text, st, o) : ''}</p:sp>`,
+    cxn: (id, name, glue, spPr) =>
+      `<p:cxnSp><p:nvCxnSpPr><p:cNvPr id="${id}" name="${name}"/><p:cNvCxnSpPr>${glue}</p:cNvCxnSpPr><p:nvPr/></p:nvCxnSpPr><p:spPr>${spPr}</p:spPr></p:cxnSp>`,
+    grp: (id, name, xf, kids) =>
+      `<p:grpSp><p:nvGrpSpPr><p:cNvPr id="${id}" name="${VL.esc(name)}"/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr>${xf}</p:grpSpPr>${kids}</p:grpSp>`,
+  };
+  function wordText(text, st, o) {
+    const sz = Math.max(2, Math.round(st.fontSize * 1.5 * K));
+    const rpr = `<w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="Microsoft JhengHei" w:cs="Calibri"/>${st.bold || o.bold ? '<w:b/>' : ''}<w:color w:val="${st.color.replace('#', '')}"/><w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/></w:rPr>`;
+    return String(text || '').split('\n').map((l) =>
+      `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="center"/>${rpr}</w:pPr>${l ? `<w:r>${rpr}<w:t xml:space="preserve">${VL.esc(l)}</w:t></w:r>` : ''}</w:p>`).join('');
+  }
+  const DOC = {
+    sp: (id, name, spPr, text, st, o) => {
+      o = o || {};
+      const tx = st ? `<wps:txbx><w:txbxContent>${wordText(text, st, o)}</w:txbxContent></wps:txbx>` : '';
+      return `<wps:wsp><wps:cNvPr id="${id}" name="${VL.esc(name)}"/><wps:cNvSpPr/><wps:spPr>${spPr}</wps:spPr>${tx}<wps:bodyPr rot="0"${bodyAttrs(o)}><a:noAutofit/></wps:bodyPr></wps:wsp>`;
+    },
+    cxn: (id, name, glue, spPr) =>
+      `<wps:wsp><wps:cNvPr id="${id}" name="${name}"/><wps:cNvCnPr>${glue}</wps:cNvCnPr><wps:spPr>${spPr}</wps:spPr><wps:bodyPr/></wps:wsp>`,
+    grp: (id, name, xf, kids) =>
+      `<wpg:wgp><wpg:cNvPr id="${id}" name="${VL.esc(name)}"/><wpg:cNvGrpSpPr/><wpg:grpSpPr>${xf}</wpg:grpSpPr>${kids}</wpg:wgp>`,
+  };
+
+  /* 產生所有圖案的 XML。D 為格式包裝，ox/oy 為位移（px），k 為縮放 */
+  function shapesXml(doc, D, ox, oy, k) {
+    K = k || 1;
     let nextId = 2;
     const ids = {};
     doc.nodes.forEach((n) => (ids[n.id] = nextId++));
-    const nv = (id, name, extra) => `<p:nvSpPr><p:cNvPr id="${id}" name="${VL.esc(name)}"/><p:cNvSpPr${extra || ''}/><p:nvPr/></p:nvSpPr>`;
 
     function shape(n) {
       const def = VL.shapes[n.type], st = n.style, below = def.label === 'below';
       const geom = def.prst ? `<a:prstGeom prst="${def.prst}"><a:avLst/></a:prstGeom>` : custGeom(def.parts(n.w, n.h), n.w, n.h, below);
-      return `<p:sp>${nv(ids[n.id], def.name)}<p:spPr>${xfrm(n.x + ox, n.y + oy, n.w, n.h)}${geom}${fillXml(st.fill)}${lnXml(st)}</p:spPr>${txBody(n.text, st, below ? { anchor: 't', nowrap: true } : null)}</p:sp>`;
+      return D.sp(ids[n.id], def.name, `${xfrm(n.x + ox, n.y + oy, n.w, n.h)}${geom}${fillXml(st.fill)}${lnXml(st)}`, n.text, st, below ? { anchor: 't', nowrap: true } : {});
     }
     function pool(n) {
       const st = n.style, R = VL.render.poolRects(n), vert = n.orient === 'h';
       const box = (r, fill, text, o) =>
-        `<p:sp>${nv(nextId++, '甬道')}<p:spPr>${xfrm(n.x + ox + r.x, n.y + oy + r.y, r.w, r.h)}<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>${fillXml(fill)}${lnXml(st)}</p:spPr>${txBody(text, st, o)}</p:sp>`;
+        D.sp(nextId++, '甬道', `${xfrm(n.x + ox + r.x, n.y + oy + r.y, r.w, r.h)}<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>${fillXml(fill)}${lnXml(st)}`, text, st, o);
       let kids = '';
-      R.lanes.forEach((l) => (kids += box(l.body, '#FFFFFF', '', null)));
+      R.lanes.forEach((l) => (kids += box(l.body, '#FFFFFF', '', {})));
       R.lanes.forEach((l, i) => (kids += box(l.head, VL.mix(st.fill, '#FFFFFF', 0.45), n.lanes[i].title, { vert })));
       kids += box(R.title, st.fill, n.text, { vert, bold: true });
       const x = emu(n.x + ox), y = emu(n.y + oy), w = emu(n.w), h = emu(n.h);
-      return `<p:grpSp><p:nvGrpSpPr><p:cNvPr id="${ids[n.id]}" name="${VL.esc('甬道圖 ' + (n.text || ''))}"/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${w}" cy="${h}"/><a:chOff x="${x}" y="${y}"/><a:chExt cx="${w}" cy="${h}"/></a:xfrm></p:grpSpPr>${kids}</p:grpSp>`;
+      return D.grp(ids[n.id], '甬道圖 ' + (n.text || ''), `<a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${w}" cy="${h}"/><a:chOff x="${x}" y="${y}"/><a:chExt cx="${w}" cy="${h}"/></a:xfrm>`, kids);
     }
     const glueIdx = (n, side) => VL.SIDES.indexOf(side) * (VL.shapes[n.type].prst === 'ellipse' ? 2 : 1);
     function connector(prst, a, b, o) {
-      // o: { vert, adj, st, ends, from:{node,side}, to:{node,side} }
       const dx = b.x - a.x, dy = b.y - a.y, W = Math.abs(dx), H = Math.abs(dy);
       let xf;
       if (o.vert) {
@@ -83,7 +108,7 @@
       }
       const av = o.adj != null ? `<a:avLst><a:gd name="adj1" fmla="val ${Math.round(o.adj * 100000)}"/></a:avLst>` : '<a:avLst/>';
       const glue = (tag, g) => (g && g.node && g.node.type !== 'pool' ? `<a:${tag} id="${ids[g.node.id]}" idx="${glueIdx(g.node, g.side)}"/>` : '');
-      return `<p:cxnSp><p:nvCxnSpPr><p:cNvPr id="${nextId++}" name="連接線"/><p:cNvCxnSpPr>${glue('stCxn', o.from)}${glue('endCxn', o.to)}</p:cNvCxnSpPr><p:nvPr/></p:nvCxnSpPr><p:spPr>${xf}<a:prstGeom prst="${prst}">${av}</a:prstGeom>${lnXml(o.st, o.ends)}</p:spPr></p:cxnSp>`;
+      return D.cxn(nextId++, '連接線', glue('stCxn', o.from) + glue('endCxn', o.to), `${xf}<a:prstGeom prst="${prst}">${av}</a:prstGeom>${lnXml(o.st, o.ends)}`);
     }
     function edgeXml(e) {
       const st = e.style, r = VL.router.route(e, doc), pts = r.pts;
@@ -99,12 +124,10 @@
         const x0 = Math.min(...pts.map((p) => p.x)), y0 = Math.min(...pts.map((p) => p.y));
         const w = Math.max(1, Math.max(...pts.map((p) => p.x)) - x0), h = Math.max(1, Math.max(...pts.map((p) => p.y)) - y0);
         const part = { c: pts.map((p, i) => [i ? 'L' : 'M', p.x - x0, p.y - y0]), f: 'none' };
-        s = `<p:sp>${nv(nextId++, '連接線')}<p:spPr>${xfrm(x0 + ox, y0 + oy, w, h)}${custGeom([part], w, h, false, true)}<a:noFill/>${lnXml(st, ends)}</p:spPr></p:sp>`;
+        s = D.sp(nextId++, '連接線', `${xfrm(x0 + ox, y0 + oy, w, h)}${custGeom([part], w, h, false, true)}<a:noFill/>${lnXml(st, ends)}`, '', null);
       }
       const lb = VL.render.edgeLabelBox(e, pts);
-      if (lb) {
-        s += `<p:sp>${nv(nextId++, '線條文字', ' txBox="1"')}<p:spPr>${xfrm(lb.x + ox - 3, lb.y + oy - 2, lb.w + 6, lb.h + 4)}<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>${fillXml('#FFFFFF')}<a:ln><a:noFill/></a:ln></p:spPr>${txBody(e.text, st, { nowrap: true })}</p:sp>`;
-      }
+      if (lb) s += D.sp(nextId++, '線條文字', `${xfrm(lb.x + ox - 3, lb.y + oy - 2, lb.w + 6, lb.h + 4)}<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>${fillXml('#FFFFFF')}<a:ln><a:noFill/></a:ln>`, e.text, st, { nowrap: true }, true);
       return s;
     }
 
@@ -117,6 +140,15 @@
     doc.nodes.filter((n) => n.type !== 'pool').forEach((n) => (tree += shape(n)));
     doc.edges.forEach((e) => (tree += edgeXml(e)));
 
+    return tree;
+  }
+
+  function build(doc) {
+    doc = VL.clone(doc);
+    VL.mm.layoutAll(doc);
+    const bb = VL.render.bbox(doc), MARGIN = 40;
+    const SW = Math.min(5300, Math.max(1280, Math.ceil(bb.w + MARGIN * 2))), SH = Math.min(5300, Math.max(720, Math.ceil(bb.h + MARGIN * 2)));
+    const tree = shapesXml(doc, PPT, Math.round((SW - bb.w) / 2 - bb.x), Math.round((SH - bb.h) / 2 - bb.y), 1);
     const emptyTree = '<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>';
     const rels = (list) => XML + `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${list.map((r, i) => `<Relationship Id="rId${i + 1}" Type="${REL}/${r[0]}" Target="${r[1]}"/>`).join('')}</Relationships>`;
     const CT = 'application/vnd.openxmlformats-officedocument.';
@@ -145,5 +177,31 @@
     `<a:fmtScheme name="Office"><a:fillStyleLst>${ph}${ph}${ph}</a:fillStyleLst><a:lnStyleLst><a:ln w="6350">${ph}</a:ln><a:ln w="12700">${ph}</a:ln><a:ln w="19050">${ph}</a:ln></a:lnStyleLst><a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst>${ph}${ph}${ph}</a:bgFillStyleLst></a:fmtScheme>` +
     '</a:themeElements></a:theme>';
 
-  VL.pptx = { build };
+  /* ---------- Word：圖案放在「繪圖畫布」中，每個圖案都可在 Word 內直接改字、改色、搬移 ---------- */
+  async function buildDocx(doc, png) {
+    doc = VL.clone(doc);
+    VL.mm.layoutAll(doc);
+    const bb = VL.render.bbox(doc), PAD = 6;
+    const w = bb.w + PAD * 2, h = bb.h + PAD * 2;
+    // A4、邊界 1.27cm：直式可用約 698 x 1026 px；放不下時改橫式，仍放不下才等比例縮小
+    const fit = (aw, ah) => Math.min(1, aw / w, ah / h);
+    const land = fit(698, 1026) < 0.85 && fit(1026, 698) > fit(698, 1026);
+    const k = land ? fit(1026, 698) : fit(698, 1026);
+    const tree = shapesXml(doc, DOC, PAD - bb.x, PAD - bb.y, k);
+    const cx = Math.round(w * k * EMU), cy = Math.round(h * k * EMU);
+    const R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+    const name = VL.esc(VL.io.name);
+    const fallback = `<w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="2" name="${name}"/><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="2" name="diagram.png"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rId1"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing>`;
+    const canvas = `<w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="1" name="${name}"/><wp:cNvGraphicFramePr/><a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas"><wpc:wpc><wpc:bg/><wpc:whole/>${tree}</wpc:wpc></a:graphicData></a:graphic></wp:inline></w:drawing>`;
+    const pg = land ? '<w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/>' : '<w:pgSz w:w="11906" w:h="16838"/>';
+    const zip = new JSZip();
+    zip.file('[Content_Types].xml', XML + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
+    zip.file('_rels/.rels', XML + `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${R}/officeDocument" Target="word/document.xml"/></Relationships>`);
+    zip.file('word/_rels/document.xml.rels', XML + `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${R}/image" Target="media/image1.png"/></Relationships>`);
+    zip.file('word/media/image1.png', png);
+    zip.file('word/document.xml', XML + `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="${R}" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas" xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" mc:Ignorable="wpc wpg wps"><w:body><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><mc:AlternateContent><mc:Choice Requires="wpc">${canvas}</mc:Choice><mc:Fallback>${fallback}</mc:Fallback></mc:AlternateContent></w:r></w:p><w:sectPr>${pg}<w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720" w:header="425" w:footer="425" w:gutter="0"/></w:sectPr></w:body></w:document>`);
+    return zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', compression: 'DEFLATE' });
+  }
+
+  VL.pptx = { build, buildDocx };
 })();

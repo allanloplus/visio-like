@@ -27,7 +27,8 @@
 | 做法 | 適用 | 之後怎麼改 |
 | --- | --- | --- |
 | **匯出 PowerPoint** | 簡報 | 匯出的是 PowerPoint **原生圖案與接點**，直接在 PowerPoint 內改字、改色、搬移（接點會跟著走）；也可複製貼到 Word |
-| **匯出 Word**／儲存 SVG 後插入圖片 | 文件（程序書、報告） | 用本工具「開啟…」直接選那份 `.docx` / `.pptx` → 修改 → 按「存回」，文件其餘內容不變 |
+| **匯出 Word** | 文件（程序書、報告） | 圖案放在 Word「繪圖畫布」中，都是 **Word 原生圖案與接點**，直接在 Word 內改字、改色、搬移；過寬的圖自動改橫式頁面或等比例縮小 |
+| **匯出 Word（圖片）**／儲存 SVG 後插入圖片 | 需要版面最穩定時 | 用本工具「開啟…」直接選那份 `.docx` / `.pptx` → 修改 → 按「存回」，文件其餘內容不變 |
 | 複製圖片 / PNG | 快速貼上 | 點陣圖，無法再編輯 |
 
 「儲存」產生的 SVG 內嵌了完整的可編輯資料，因此同一個檔案既是可插入文件的向量圖，也是本工具的原始檔。
@@ -54,7 +55,7 @@ js/router.js      連接線路徑
 js/mindmap.js     心智圖排版
 js/render.js      SVG 繪製
 js/editor.js      互動編輯
-js/pptx.js        PowerPoint 原生圖案匯出
+js/pptx.js        PowerPoint / Word 原生圖案匯出
 js/io.js          SVG / PNG / Word 匯出與 Office 檔往返
 js/import.js      圖檔轉換（Claude 視覺辨識 → 重繪）
 js/ui.js          工具列、調色盤、屬性面板
@@ -63,6 +64,6 @@ vendor/jszip.min.js  JSZip (MIT)，用於讀寫 docx / pptx
 
 ## 已知限制
 
-- 需要繞行的連接線（例如從圖形背面折回）匯出到 PowerPoint 時為手繪多邊形，外觀相同但不會黏著圖形。
+- 需要繞行的連接線（例如從圖形背面折回）匯出到 PowerPoint / Word 時為手繪多邊形，外觀相同但不會黏著圖形。
 - 目前為單一頁面；圖形尚不支援旋轉。
 - Office 匯出結果以 LibreOffice 驗證過；Word 往返編輯需 Word 2016 以上（支援 SVG 圖片的版本）。
