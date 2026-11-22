@@ -5,7 +5,7 @@
 | 工具名稱 | Allan's 隨意畫流程圖 |
 | 系統設計 | Allan Lo，https://www.123hi.org |
 | 開發日期 | 2026/11/21 |
-| 最新版本 | Allanlo-20261122-03 |
+| 最新版本 | Allanlo-20261122-04 |
 
 類似 Visio 的瀏覽器繪圖工具，重點是**甬道圖、流程圖、心智圖、組織圖**，以及讓圖能**輕鬆放進 Word / PowerPoint 並持續維護**。
 
@@ -60,6 +60,7 @@ js/pptx.js        PowerPoint / Word 原生圖案匯出
 js/io.js          SVG / PNG / Word 匯出與 Office 檔往返
 js/import.js      圖檔轉換（Claude 視覺辨識 → 重繪）
 js/ui.js          工具列、調色盤、屬性面板
+img/              Allan 與阿拉蕾的角色圖（介面裝飾）
 vendor/jszip.min.js  JSZip (MIT)，用於讀寫 docx / pptx
 ```
 

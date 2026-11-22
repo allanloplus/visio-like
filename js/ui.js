@@ -9,8 +9,12 @@
   /* ---------- 訊息 ---------- */
   let toastTimer;
   ui.toast = function (msg, ms) {
-    const t = $('#toast');
-    t.textContent = msg; t.hidden = false;
+    const t = $('#toast'), bad = /^⚠/.test(msg);
+    // 阿拉蕾報告結果：成功時開心、出錯時困惑
+    $('img', t).src = bad ? 'img/arale-puzzled.webp' : 'img/arale-cheer.webp';
+    $('span', t).textContent = msg.replace(/^⚠\s*/, '');
+    t.classList.toggle('bad', bad);
+    t.hidden = false;
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => (t.hidden = true), ms || 3200);
   };
@@ -154,7 +158,7 @@
   <li>自動轉換需 Claude API 金鑰，且<b>圖檔會傳送到 Anthropic API</b>；也可用手動方式（不需金鑰）。</li></ul>
   <p class="muted">除了「圖檔轉換」的自動模式外，所有資料都只在你的瀏覽器內處理，不會上傳到任何伺服器。</p>`;
   const A = VL.APP;
-  const ABOUT = `<h2>關於 ${VL.esc(A.name)}</h2>
+  const ABOUT = `<div class="about-hero"><img src="img/allan-full.webp" alt="Allan"><div><h2>${VL.esc(A.name)}</h2><p class="muted">Allan 與 AI 小助手阿拉蕾，陪你把流程畫清楚。</p></div><img src="img/arale-full.webp" alt="阿拉蕾"></div>
   <table class="about"><tr><th>工具名稱</th><td>${VL.esc(A.name)}</td></tr>
   <tr><th>系統設計</th><td>${VL.esc(A.author)}，<a href="${A.site}" target="_blank" rel="noopener">${A.site}</a></td></tr>
   <tr><th>開發日期</th><td>${A.date}</td></tr>
@@ -178,7 +182,6 @@
 
   document.title = A.name;
   $('#brand').textContent = A.name;
-  $('#brand').title = `${A.version}｜系統設計：${A.author}`;
   buildPalette();
   bindProps();
   $('#toolbar').addEventListener('click', (e) => { const b = e.target.closest('[data-act]'); if (b) ACTS[b.dataset.act](); });

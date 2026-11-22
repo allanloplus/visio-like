@@ -7,7 +7,7 @@
     author: 'Allan Lo',
     site: 'https://www.123hi.org',
     date: '2026/11/21',
-    version: 'Allanlo-20261122-03',
+    version: 'Allanlo-20261122-04',
   };
 
   VL.FONT = "'Microsoft JhengHei','PingFang TC','Noto Sans TC','Segoe UI',Arial,sans-serif";
